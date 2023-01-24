@@ -144,3 +144,262 @@ spec:
         ports:
         - containerPort: 80
 ```
+
+---
+
+#### StatefulSets
+
+Stateful applications are applications that store data and keep tracking it. All databases, such as MySQL, Oracle, and PostgreSQL, are examples of stateful applications. Stateless applications, on the other hand, do not keep the data. Node.js and Nginx are examples of stateless applications. For each request, the stateless application will receive new data and process it.
+
+In a modern web application, the stateless application connects with stateful applications to serve the user’s request. A Node.js application is a stateless application that receives new data on each request from the user. This application is then connected with a stateful application, such as a MySQL database, to process the data. MySQL stores data and keeps updating the data based on the user’s request.
+
+The diagram below shows how the Pod is numbered from zero and how the persistent volume is attached to the Pod in the StatefulSets.
+
+![](./assets/image01.png)
+
+There are several reasons to consider using StatefulSets. Here are two examples:
+
+1. Assume you deployed a MySQL database in the Kubernetes cluster and scaled this to three replicas, and a frontend application wants to access the MySQL cluster to read and write data. The read request will be forwarded to three Pods. However, the write request will only be forwarded to the first (primary) Pod, and the data will be synced with the other Pods. You can achieve this by using StatefulSets.
+2. Deleting or scaling down a StatefulSet will not delete the volumes associated with the stateful application. This gives you your data safety. If you delete the MySQL Pod or if the MySQL Pod restarts, you can have access to the data in the same volume.
+
+Example:
+
+```bash
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None
+  selector:
+    app: nginx
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  selector:
+    matchLabels:
+      app: nginx # has to match .spec.template.metadata.labels
+  serviceName: "nginx"
+  replicas: 3 # by default is 1
+  minReadySeconds: 10 # by default is 0
+  template:
+    metadata:
+      labels:
+        app: nginx # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: nginx
+        image: registry.k8s.io/nginx-slim:0.8
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "my-storage-class"
+      resources:
+        requests:
+          storage: 1Gi
+
+```
+
+---
+
+#### DaemonSet
+
+A DaemonSet in Kubernetes is an object that ensures that a specified number of replicas of a Pod are running on each node in the cluster. It is useful for deploying pods that need to run on every node, such as monitoring agents or logs collectors.
+
+A DaemonSet is defined by a pod template, which specifies the configuration for the pods it creates, including the container image, resource requirements, and environment variables. It also has a selector, which is used to determine which pods it should manage.
+
+When a DaemonSet is created, it creates the desired number of replicas of the pods according to the pod template. The DaemonSet automatically scales the number of replicas up or down as nodes are added or removed from the cluster. When a node is added to the cluster, a new Pod is created on that node. When a node is removed from the cluster, the Pod running on that node is terminated.
+
+A DaemonSet also allows for manual scaling of the number of replicas by updating the replica count in the DaemonSet. However, this is less common as the main purpose of a DaemonSet is to run a pod on every node of the cluster.
+
+DaemonSets have a few important features:
+
+- They ensure that a pod is running on every node of the cluster, and if a node is added or removed, the DaemonSet will automatically create or delete a pod.
+- They allow for pods to run on specific nodes by using node selectors or node affinity.
+- They allow for pods to be updated or rolled back by creating a new DaemonSet, and then gradually scaling up or down the replicas.
+
+DaemonSets are useful for deploying pods that need to run on every node in the cluster, such as monitoring agents, logs collectors, or cluster-wide network plugins. They also provide a way to ensure that the same set of pods runs on every node, which can simplify management and deployment.
+
+Example:
+
+```bash
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd-elasticsearch
+  namespace: kube-system
+  labels:
+    k8s-app: fluentd-logging
+spec:
+  selector:
+    matchLabels:
+      name: fluentd-elasticsearch
+  template:
+    metadata:
+      labels:
+        name: fluentd-elasticsearch
+    spec:
+      tolerations:
+      # these tolerations are to have the daemonset runnable on control plane nodes
+      # remove them if your control plane nodes should not run pods
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: fluentd-elasticsearch
+        image: quay.io/fluentd_elasticsearch/fluentd:v2.5.2
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+```
+
+---
+
+#### Jobs
+
+A Job in Kubernetes is an object that represents a single, finite task that runs to completion. It is used to run batch jobs, such as data processing or image rendering.
+
+A Job is defined by a pod template, which specifies the configuration for the pod that runs the job, including the container image, resource requirements, and environment variables. It also has a selector, which is used to determine which pod it should manage.
+
+When a Job is created, it creates a Pod to run the task according to the pod template. The Job ensures that the specified number of replicas of the Pod runs to completion. It also has the option to specify the number of parallel replicas, which means how many pods should run at the same time.
+
+A Job can be used to run a single task or a set of tasks, depending on the configuration. Once the task completes, the Job marks itself as completed and the associated Pod is terminated.
+
+A Job also provides the option to specify a desired number of completions, which means how many times the task should be run. It can also specify the number of parallel completions, which means how many tasks should run at the same time.
+
+A Job also can be configured to automatically clean up completed pods, which means that once the task is completed, the associated pod is deleted.
+
+A Job is useful for running batch jobs, such as data processing, image rendering, or running a one-time initialization process. They are also useful for running tasks that are expected to complete successfully at some point, such as a database migration.
+
+Example:
+
+```bash
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pi
+spec:
+  template:
+    spec:
+      containers:
+      - name: pi
+        image: perl:5.34.0
+        command: ["perl",  "-Mbignum=bpi", "-wle", "print bpi(2000)"]
+      restartPolicy: Never
+  backoffLimit: 4
+
+```
+
+Here are a few examples of tasks that can be run using a Kubernetes Job object:
+
+1. Data processing: A Job can be used to process large amounts of data, such as running a batch data transformation or analysis job. The Job would create a Pod with the necessary tools and resources to process the data, and the Pod would run to completion once the data is processed.
+
+2. Image rendering: A Job can be used to render a large number of images, such as creating 3D models or animations. The Job would create a Pod with the necessary rendering software and resources, and the Pod would run to completion once the images are rendered.
+
+3. Database migration: A Job can be used to run a one-time database migration task, such as updating the schema or migrating data between environments. The Job would create a Pod with the necessary migration tools and resources, and the Pod would run to completion once the migration is complete.
+
+4. Backup: A Job can be used to perform regular backups of a database or other data stores. The Job would create a Pod with the necessary backup tools and resources and the Pod would run to completion once the backup is completed.
+
+5. Generating Reports: A Job can be used to generate reports, such as generating daily or weekly reports of a specific metric. The Job would create a Pod with the necessary reporting tools and resources, and the Pod would run to completion once the report is generated.
+
+6. Clean up old files: A Job can be used to perform a clean-up task, such as removing old files, deleting expired objects in a bucket, etc. The Job would create a Pod with the necessary tools and resources and the Pod would run to completion once the clean-up task is completed.
+
+---
+
+#### CronJob
+
+A CronJob in Kubernetes is a specialized type of Job object that allows you to schedule tasks to run at specified times or intervals, similar to the UNIX cron daemon. It is used to run recurring tasks, such as running backups or sending reports.
+
+A CronJob is defined by a pod template, which specifies the configuration for the pod that runs the task, including the container image, resource requirements, and environment variables. It also has a schedule, which is a cron-like expression that defines when the task should run.
+
+When a CronJob is created, it creates a Job object each time its schedule is triggered. The Job object creates a Pod to run the task according to the pod template. The CronJob ensures that the Job runs to completion, and it automatically creates new Job objects as specified by the schedule.
+
+A CronJob can also be configured to automatically clean up completed jobs and pods, which means that once the task is completed, the associated job and pod are deleted.
+
+A CronJob is useful for running tasks that need to be run on a regular schedule, such as running backups, sending reports, or performing maintenance tasks. It also provides a way to run tasks at specific times, such as running a task at a specific time of the day or week.
+
+Example:
+
+```bash
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hello
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox:1.28
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - date; echo Hello from the Kubernetes cluster
+          restartPolicy: OnFailure
+
+```
+
+Schedule syntax
+
+```bash
+# ┌───────────── minute (0 - 59)
+# │ ┌───────────── hour (0 - 23)
+# │ │ ┌───────────── day of the month (1 - 31)
+# │ │ │ ┌───────────── month (1 - 12)
+# │ │ │ │ ┌───────────── day of the week (0 - 6) (Sunday to Saturday;
+# │ │ │ │ │                                   7 is also Sunday on some systems)
+# │ │ │ │ │                                   OR sun, mon, tue, wed, thu, fri, sat
+# │ │ │ │ │
+# * * * * *
+```
+
+---
+
+### Services, Load Balancing, and Networking
+
+---
+
+####
+
+Example:
+
+```bash
+
+```
+
+---
