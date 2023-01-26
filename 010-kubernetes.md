@@ -20,23 +20,39 @@ Kubernetes is often used in conjunction with container orchestration systems suc
 
 The Kubernetes architecture is composed of several main components:
 
-!['components-of-kubernetes'](./assets/components-of-kubernetes.svg)
+!['components-of-kubernetes'](./assets/image00.svg)
 
-1. `API server` is the core component that exposes the Kubernetes API and handles all API requests. It is responsible for maintaining the desired state of the cluster, such as creating, updating, and deleting resources.
+#### API serve
 
-2. `Controller manager` is a daemon that runs on the master node and manages the state of the cluster. It runs various controllers, such as the replication controller, which ensures that the desired number of replicas of a pod are running.
+` is the core component that exposes the Kubernetes API and handles all API requests. It is responsible for maintaining the desired state of the cluster, such as creating, updating, and deleting resources.
 
-3. `etcd` is a distributed key-value store that is used to store the configuration data of the Kubernetes cluster, such as the desired state of the resources. It is a critical component of the control plane and is used by the API server to store and retrieve data.
+#### Controller manage
 
-4. `Kubelet` is a daemon that runs on each worker node and is responsible for maintaining the state of the pods on that node. It communicates with the API server to ensure that the desired number of replicas of a pod are running and that the containers within the pods are healthy.
+` is a daemon that runs on the master node and manages the state of the cluster. It runs various controllers, such as the replication controller, which ensures that the desired number of replicas of a pod are running.
 
-5. `kube-proxy` is a daemon that runs on each worker node and is responsible for networking and service discovery within the cluster. It forwards traffic to the correct pods based on the service definition and also load balances the traffic between the pods.
+#### etcd
 
-6. `Scheduler` is a component that runs on the master node and is responsible for scheduling pods to run on worker nodes. It takes into account factors such as available resources, network topology, and constraints defined by the user.
+is a distributed key-value store that is used to store the configuration data of the Kubernetes cluster, such as the desired state of the resources. It is a critical component of the control plane and is used by the API server to store and retrieve data.
 
-7. `Control plane` is the set of components that run on the master node and are responsible for maintaining the desired state of the cluster. This includes the API server, controller manager, and etcd.
+#### Kubelet
 
-8. `Node` is a worker machine in a Kubernetes cluster. It can be a physical or virtual machine that runs pods and is managed by the control plane. Each node runs the kubelet and kube-proxy daemons.
+is a daemon that runs on each worker node and is responsible for maintaining the state of the pods on that node. It communicates with the API server to ensure that the desired number of replicas of a pod are running and that the containers within the pods are healthy.
+
+#### kube-prox
+
+` is a daemon that runs on each worker node and is responsible for networking and service discovery within the cluster. It forwards traffic to the correct pods based on the service definition and also load balances the traffic between the pods.
+
+#### Scheduler
+
+is a component that runs on the master node and is responsible for scheduling pods to run on worker nodes. It takes into account factors such as available resources, network topology, and constraints defined by the user.
+
+#### Control plan
+
+` is the set of components that run on the master node and are responsible for maintaining the desired state of the cluster. This includes the API server, controller manager, and etcd.
+
+#### Node
+
+is a worker machine in a Kubernetes cluster. It can be a physical or virtual machine that runs pods and is managed by the control plane. Each node runs the kubelet and kube-proxy daemons.
 
 ---
 
@@ -390,7 +406,7 @@ Schedule syntax
 
 ---
 
-#### Services
+### Services
 
 A Service in Kubernetes is an object that enables communication between Pods in a cluster. It acts as an abstraction layer on top of one or more Pods, and it enables communication between Pods and other objects in the cluster, such as other Services or external clients.
 
@@ -398,125 +414,135 @@ A Service is defined by a selector, which is used to determine which Pods it sho
 
 When a Service is created, it creates an endpoint object and a virtual IP (VIP) that can be used to access the Pods managed by the Service. The endpoint object is used to keep track of the IP addresses and ports of the Pods that match the Service's selector, and the VIP is used to access the Pods.
 
-There are several types of services in Kubernetes:
+#### ClusterIP
 
-- ClusterIP: Exposes the Service on a cluster-internal IP. Choosing this value makes the Service only reachable from within the cluster. This is the default that is used if you don't explicitly specify a type for a Service.
+Cluster IP is the default one used only for internal communication within the cluster through service, not to the external traffic. it is very useful when you plan to have architecture like frontend end and backend services. You can use this cluster ip service for your backend pods. its like a private pods, not exposed to public.
 
+![](./assets/image02.jpg)
+
+Example:
+
+```bash
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-cip-service
+spec:
+  selector:
+    app: metrics
+    department: sales
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+
+```
+
+Use cases:
+
+- Creating a private network for microservices to communicate with each other in a secure way.
+- Accessing a service running on a cluster from other parts of the same cluster.
+- Creating a virtual service that acts as a load balancer for a set of pods.
   <br>
-  Example:
 
-  ```bash
-  apiVersion: v1
-  kind: Service
-  metadata:
-    name: my-cip-service
-  spec:
-    selector:
-      app: metrics
-      department: sales
-    type: ClusterIP
-    ports:
+#### NodePort
+
+NodePort type exposes your pod to external network with the same target port, so user can access it using worker node ip and port it is exposed. traffic will be send to respective pods through service.
+
+![](./assets/image03.jpg)
+
+Example:
+
+```bash
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: MyApp
+  ports:
+      # By default and for convenience, the `targetPort` is set to the same value as the `port` field.
+    - port: 80
+      targetPort: 80
+      # Optional field
+      # By default and for convenience, the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
+      nodePort: 30007
+```
+
+Use cases:
+
+- Exposing a service to the outside world for testing or development purposes.
+- Exposing a service running on a cluster to a specific set of IPs.
+- Exposing a service to a specific set of users without needing to setup a load balancer.
+  <br>
+
+#### LoadBalancer
+
+Exposes the Service externally using a cloud provider's load balancer.
+
+![](./assets/image04.jpg)
+
+Example:
+
+```bash
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app.kubernetes.io/name: MyApp
+  ports:
     - protocol: TCP
       port: 80
-      targetPort: 8080
+      targetPort: 9376
+  clusterIP: 10.0.171.239
+  type: LoadBalancer
+status:
+  loadBalancer:
+    ingress:
+    - ip: 192.0.2.127
+```
 
-  ```
+Use cases:
 
-  Use cases:
-
-  - Creating a private network for microservices to communicate with each other in a secure way.
-  - Accessing a service running on a cluster from other parts of the same cluster.
-  - Creating a virtual service that acts as a load balancer for a set of pods.
-    <br>
-
-- NodePort: Exposes the Service on each Node's IP at a static port (the NodePort). To make the node port available, Kubernetes sets up a cluster IP address, the same as if you had requested a Service of type: ClusterIP.
-
+- Exposing a service to the outside world with a stable endpoint, this allows for easy scaling or moving of pods.
+- Exposing a service to the internet with a stable endpoint, this allows for easy scaling or moving of pods.
+- Exposing a service to the internet for production use.
   <br>
-  Example:
 
-  ```bash
-  apiVersion: v1
-  kind: Service
-  metadata:
-    name: my-service
-  spec:
-    type: NodePort
-    selector:
-      app.kubernetes.io/name: MyApp
-    ports:
-        # By default and for convenience, the `targetPort` is set to the same value as the `port` field.
-      - port: 80
-        targetPort: 80
-        # Optional field
-        # By default and for convenience, the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
-        nodePort: 30007
-  ```
+#### ExternalName
 
-  Use cases:
+Maps the Service to the contents of the externalName field (e.g. foo.bar.example.com), by returning a CNAME record with its value. No proxying of any kind is set up.
 
-  - Exposing a service to the outside world for testing or development purposes.
-  - Exposing a service running on a cluster to a specific set of IPs.
-  - Exposing a service to a specific set of users without needing to setup a load balancer.
-    <br>
+![](./assets/image05.jpg)
 
-- LoadBalancer: Exposes the Service externally using a cloud provider's load balancer.
+Example:
 
-    <br>
-    Example:
+```bash
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+  namespace: prod
+spec:
+  type: ExternalName
+  externalName: my.database.example.com
 
-  ```bash
-  apiVersion: v1
-  kind: Service
-  metadata:
-    name: my-service
-  spec:
-    selector:
-      app.kubernetes.io/name: MyApp
-    ports:
-      - protocol: TCP
-        port: 80
-        targetPort: 9376
-    clusterIP: 10.0.171.239
-    type: LoadBalancer
-  status:
-    loadBalancer:
-      ingress:
-      - ip: 192.0.2.127
-  ```
+```
 
-  Use cases:
+Use cases:
 
-  - Exposing a service to the outside world with a stable endpoint, this allows for easy scaling or moving of pods.
-  - Exposing a service to the internet with a stable endpoint, this allows for easy scaling or moving of pods.
-  - Exposing a service to the internet for production use.
-    <br>
-
-- ExternalName: Maps the Service to the contents of the externalName field (e.g. foo.bar.example.com), by returning a CNAME record with its value. No proxying of any kind is set up.
-
-  <br>
-  Example:
-
-  ```bash
-  apiVersion: v1
-  kind: Service
-  metadata:
-    name: my-service
-    namespace: prod
-  spec:
-    type: ExternalName
-    externalName: my.database.example.com
-
-  ```
-
-  Use cases:
-
-  - Connecting to an external service running outside the cluster, such as a service running on another cloud provider or on-premises.
-  - Connecting to a service that is not managed by Kubernetes, such as an external database or API.
-  - Connecting to an external service that requires a specific hostname, such as a DNS service.
+- Connecting to an external service running outside the cluster, such as a service running on another cloud provider or on-premises.
+- Connecting to a service that is not managed by Kubernetes, such as an external database or API.
+- Connecting to an external service that requires a specific hostname, such as a DNS service.
 
 ---
 
-####
+### Ingress
 
 Example:
 
