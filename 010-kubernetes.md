@@ -20,39 +20,39 @@ Kubernetes is often used in conjunction with container orchestration systems suc
 
 The Kubernetes architecture is composed of several main components:
 
-!['components-of-kubernetes'](./assets/image00.svg)
+!['components-of-kubernetes'](./images/image00.svg)
 
 #### API serve
 
-` is the core component that exposes the Kubernetes API and handles all API requests. It is responsible for maintaining the desired state of the cluster, such as creating, updating, and deleting resources.
+This is the core component that exposes the Kubernetes API and handles all API requests. It is responsible for maintaining the desired state of the cluster, such as creating, updating, and deleting resources.
 
 #### Controller manage
 
-` is a daemon that runs on the master node and manages the state of the cluster. It runs various controllers, such as the replication controller, which ensures that the desired number of replicas of a pod are running.
+This is a daemon that runs on the master node and manages the state of the cluster. It runs various controllers, such as the replication controller, which ensures that the desired number of replicas of a pod are running.
 
 #### etcd
 
-is a distributed key-value store that is used to store the configuration data of the Kubernetes cluster, such as the desired state of the resources. It is a critical component of the control plane and is used by the API server to store and retrieve data.
+This is a distributed key-value store that is used to store the configuration data of the Kubernetes cluster, such as the desired state of the resources. It is a critical component of the control plane and is used by the API server to store and retrieve data.
 
 #### Kubelet
 
-is a daemon that runs on each worker node and is responsible for maintaining the state of the pods on that node. It communicates with the API server to ensure that the desired number of replicas of a pod are running and that the containers within the pods are healthy.
+This is a daemon that runs on each worker node and is responsible for maintaining the state of the pods on that node. It communicates with the API server to ensure that the desired number of replicas of a pod are running and that the containers within the pods are healthy.
 
 #### kube-prox
 
-` is a daemon that runs on each worker node and is responsible for networking and service discovery within the cluster. It forwards traffic to the correct pods based on the service definition and also load balances the traffic between the pods.
+This is a daemon that runs on each worker node and is responsible for networking and service discovery within the cluster. It forwards traffic to the correct pods based on the service definition and also load balances the traffic between the pods.
 
 #### Scheduler
 
-is a component that runs on the master node and is responsible for scheduling pods to run on worker nodes. It takes into account factors such as available resources, network topology, and constraints defined by the user.
+This is a component that runs on the master node and is responsible for scheduling pods to run on worker nodes. It takes into account factors such as available resources, network topology, and constraints defined by the user.
 
 #### Control plan
 
-` is the set of components that run on the master node and are responsible for maintaining the desired state of the cluster. This includes the API server, controller manager, and etcd.
+This is the set of components that run on the master node and are responsible for maintaining the desired state of the cluster. This includes the API server, controller manager, and etcd.
 
 #### Node
 
-is a worker machine in a Kubernetes cluster. It can be a physical or virtual machine that runs pods and is managed by the control plane. Each node runs the kubelet and kube-proxy daemons.
+This is a worker machine in a Kubernetes cluster. It can be a physical or virtual machine that runs pods and is managed by the control plane. Each node runs the kubelet and kube-proxy daemons.
 
 ---
 
@@ -171,7 +171,7 @@ In a modern web application, the stateless application connects with stateful ap
 
 The diagram below shows how the Pod is numbered from zero and how the persistent volume is attached to the Pod in the StatefulSets.
 
-![](./assets/image01.png)
+![](./images/image01.png)
 
 There are several reasons to consider using StatefulSets. Here are two examples:
 
@@ -418,7 +418,7 @@ When a Service is created, it creates an endpoint object and a virtual IP (VIP) 
 
 Cluster IP is the default one used only for internal communication within the cluster through service, not to the external traffic. it is very useful when you plan to have architecture like frontend end and backend services. You can use this cluster ip service for your backend pods. its like a private pods, not exposed to public.
 
-![](./assets/image02.jpg)
+![](./images/image02.jpg)
 
 Example:
 
@@ -450,7 +450,7 @@ Use cases:
 
 NodePort type exposes your pod to external network with the same target port, so user can access it using worker node ip and port it is exposed. traffic will be send to respective pods through service.
 
-![](./assets/image03.jpg)
+![](./images/image03.jpg)
 
 Example:
 
@@ -483,7 +483,7 @@ Use cases:
 
 Exposes the Service externally using a cloud provider's load balancer.
 
-![](./assets/image04.jpg)
+![](./images/image04.jpg)
 
 Example:
 
@@ -518,7 +518,7 @@ Use cases:
 
 Maps the Service to the contents of the externalName field (e.g. foo.bar.example.com), by returning a CNAME record with its value. No proxying of any kind is set up.
 
-![](./assets/image05.jpg)
+![](./images/image05.jpg)
 
 Example:
 
@@ -543,6 +543,204 @@ Use cases:
 ---
 
 ### Ingress
+
+Kubernetes Ingress is an API object that provides routing rules to manage access to the services within a Kubernetes cluster. This typically uses HTTPS and HTTP protocols to facilitate the routing.
+
+Ingress is the ideal choice for a production environment. Users can expose services within the Kubernetes cluster without having to create multiple load balancers or manually exposing services.
+
+Moreover, K8s Ingress offers a single entry point for the cluster, allowing administrators to manage the applications easily and diagnose any routing issues. This decreases the attack surface of the cluster, automatically increasing the overall security.
+
+Some use cases of Kubernetes Ingress include:
+
+- Providing externally reachable URLs for services
+- Load balancing traffic
+- Offering name-based virtual hosting
+- Terminating SSL (secure sockets layer) or TLS (transport layer security)
+
+Kubernetes Ingress supports multiple protocols, authentication, content-based routing, etc., and allows users to manage and configure them in Kubernetes clusters easily.
+
+Kubernetes Ingress consists of two core components:
+
+- Ingress API object. The API object indicates the services that need to be exposed outside the cluster. It consists of the routing rules.
+- Ingress Controller. Ingress Controller is the actual implementation of Ingress. It is usually a load balancer that routes traffic from the API to the desired services within the Kubernetes cluster.
+
+<br>
+
+![](./images/image06.svg)
+
+Example:
+
+```bash
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+spec:
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - path: /foo
+        pathType: Prefix
+        backend:
+          service:
+            name: foo-service
+            port:
+              number: 3000
+      - path: /bar
+        pathType: Prefix
+        backend:
+          service:
+            name: bar-service
+            port:
+              number: 6000
+  - host: foo.example.com
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/foo"
+        backend:
+          service:
+            name: foo-service-2
+            port:
+              number: 80
+  - host: "*.foo.example.com"
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/foo"
+        backend:
+          service:
+            name: foo-service-3
+            port:
+              number: 8080
+
+```
+
+#### Ingress controller
+
+An Ingress controller is a software component in a Kubernetes cluster that is responsible for handling incoming traffic, based on the rules defined in an Ingress resource. An Ingress controller is typically implemented as a pod running within a cluster, and it watches the Kubernetes API for new or updated Ingress resources.
+
+When an Ingress resource is created or updated, the Ingress controller reads the rules defined in that resource and configures the necessary resources (such as a load balancer or a reverse proxy) to handle the incoming traffic.
+
+Ingress controllers are not a Kubernetes-native feature, and a separate controller needs to be installed in the cluster. There are many different ingress controllers available, such as nginx-ingress-controller, haproxy-ingress-controller, traefik-ingress-controller, etc.
+
+Each controller implementation has its own features and capabilities, and the choice of which controller to use will depend on your specific use case and requirements. Some controllers are focused on providing basic load balancing and routing functionality, while others provide more advanced features such as SSL termination, path-based routing, and authentication and authorization.
+
+An Ingress controller allows you to define how external traffic is routed to the services running within a cluster, and it also allows you to expose multiple services under the same IP address or hostname, and to apply rules to control how traffic is routed to those services. It enables external access to your cluster, making it possible to expose your application to the internet.
+
+<img src="./images/image09.png" width="800">
+
+Configuring an Ingress controller within a Kubernetes cluster typically involves the following steps:
+
+1. Deploy the Ingress controller: The first step is to deploy the Ingress controller as a pod within your cluster. The exact method for doing this will depend on the Ingress controller you are using. For example, with the NGINX Ingress controller, you can deploy it using a Kubernetes Deployment or Helm chart. You can check the documentation of the ingress controller you want to use for more information about the deployment.
+
+2. Create an Ingress resource: Once the Ingress controller is deployed, you can create an Ingress resource that defines the routing rules for your services. The Ingress resource is a Kubernetes resource that tells the Ingress controller how to route incoming traffic. You can create the Ingress resource using a YAML file and the kubectl apply command.
+
+3. Create a Service: To expose a service within your cluster to the outside world, you need to create a Kubernetes Service resource. This service will be used by the ingress controller to route the traffic to the correct pod.
+
+4. Configure DNS: The final step is to configure DNS to point to the IP address or hostname of the Ingress controller. This will allow clients to access the services exposed by the Ingress controller using a hostname or IP address.
+
+5. Test your ingress: After you've deployed the ingress controller and created the ingress resource, you can test your ingress by sending a request to the ingress controller's IP address or hostname using the path that you've defined in the ingress resource. You can check the logs of the ingress controller to see if the request was routed correctly.
+
+#### Ingress backed by a single Service
+
+This type of Ingress is the simplest form of ingress, it routes all incoming traffic to a single service. It is useful for simple use cases where you want to expose a single service to the internet, and all incoming traffic should be directed to that service. For example, you have a web application running in a cluster and want to expose it to the internet, you would use this type of ingress to route all incoming traffic to the service running the web application.
+
+Example:
+
+```bash
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-ingress
+spec:
+  defaultBackend:
+    service:
+      name: test
+      port:
+        number: 80
+```
+
+#### Simple fanout
+
+This type of Ingress allows you to route traffic to multiple services based on the URL path. It is useful for use cases where you want to expose multiple services under the same IP address or hostname, and you want to route traffic to those services based on the URL path. This can be useful for a microservice architecture, where you have multiple services that need to be exposed to the internet under the same hostname. For example, you have a website running on multiple services such as backend, frontend and api, you would use this type of ingress to route incoming traffic to the correct service based on the URL path.
+
+![](./images/image07.svg)
+
+Example:
+
+```bash
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: simple-fanout-example
+spec:
+  rules:
+  - host: foo.bar.com
+    http:
+      paths:
+      - path: /foo
+        pathType: Prefix
+        backend:
+          service:
+            name: service1
+            port:
+              number: 4200
+      - path: /bar
+        pathType: Prefix
+        backend:
+          service:
+            name: service2
+            port:
+              number: 8080
+```
+
+#### Name-based virtual hosting
+
+This type of Ingress allows you to route traffic to multiple services based on the hostname. It is useful for use cases where you want to expose multiple services under different hostnames, and you want to route traffic to those services based on the hostname. This type of Ingress is similar to how virtual hosting works on a web server. For example, you have multiple applications running in a cluster and each application has its own hostname, you would use this type of ingress to route incoming traffic to the correct application based on the hostname.
+
+![](./images/image08.svg)
+
+Example:
+
+```bash
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: name-virtual-host-ingress
+spec:
+  rules:
+  - host: foo.bar.com
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: service1
+            port:
+              number: 80
+  - host: bar.foo.com
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: service2
+            port:
+              number: 80
+
+```
+
+---
+
+### Storage
+
+---
+
+###
 
 Example:
 
