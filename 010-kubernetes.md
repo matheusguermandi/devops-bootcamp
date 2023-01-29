@@ -736,11 +736,49 @@ spec:
 
 ---
 
-### Storage
+### Volume
 
----
+A Kubernetes volume is a directory that contains data accessible to containers in a given Pod in the orchestration and scheduling platform. Volumes provide a plug-in mechanism to connect ephemeral containers with persistent data stores elsewhere.
 
-###
+Kubernetes volumes persist until the Pod is deleted. When a Pod with a unique identification is deleted, the volume associated with it gets destroyed. If a Pod is deleted but replaced with an identical Pod, a new and identical volume is also created. No matter what Node the Pod runs on, Kubernetes will mount the Pod's volumes to it, allowing containers to move across infrastructure without losing access to the externally hosted data that they require for the workload.
+
+The data within a volume outlasts the containers running in the Pod, which can shut down and restart as ephemeral units. Data remains safe in volumes even if a container crashes, because a container crash is not enough to cut off a Pod from a Node. A Pod specifies what volumes it will access, and where the volume will be placed in the containers.
+
+Volumes cannot be added to other volumes and links do not exist between volumes. The Kubernetes user must specify volume mounting for each container in a Pod. A representation of each Pod's desired state is stored in Kubernetes's API server and central controller. Kubernetes also uses its kubelet agents to reconcile deployments. For example, if a volume cannot be used twice, the kubelet will detect this and report that it cannot safely use the volume, and retry and reevaluate deployment options through the scheduler until one is ready that meets the requirements.
+
+#### Types of Kubernetes Volume
+
+- `emptyDir`: It is a type of volume that is created when a Pod is first assigned to a Node. It remains active as long as the Pod is running on that node. The volume is initially empty and the containers in the pod can read and write the files in the emptyDir volume. Once the Pod is removed from the node, the data in the emptyDir is erased.
+
+- `hostPath`: This type of volume mounts a file or directory from the host node’s filesystem into your pod.
+
+- `gcePersistentDisk`: This type of volume mounts a Google Compute Engine (GCE) Persistent Disk into your Pod. The data in a gcePersistentDisk remains intact when the Pod is removed from the node.
+
+- `awsElasticBlockStore`: This type of volume mounts an Amazon Web Services (AWS) Elastic Block Store into your Pod. Just like gcePersistentDisk, the data in an awsElasticBlockStore remains intact when the Pod is removed from the node.
+
+- `nfs`: An nfs volume allows an existing NFS (Network File System) to be mounted into your pod. The data in an nfs volume is not erased when the Pod is removed from the node. The volume is only unmounted.
+
+- `iscsi`: An iscsi volume allows an existing iSCSI (SCSI over IP) volume to be mounted into your pod.
+
+- `flocker`: It is an open-source clustered container data volume manager. It is used for managing data volumes. A flocker volume allows a Flocker dataset to be mounted into a pod. If the dataset does not exist in Flocker, then you first need to create it by using the Flocker API.
+
+- `glusterfs`: Glusterfs is an open-source networked filesystem. A glusterfs volume allows a glusterfs volume to be mounted into your pod.
+
+- `rbd`: RBD stands for Rados Block Device. An rbd volume allows a Rados Block Device volume to be mounted into your pod. Data remains preserved after the Pod is removed from the node.
+
+- `cephfs`: A cephfs volume allows an existing CephFS volume to be mounted into your pod. Data remains intact after the Pod is removed from the node.
+
+- `gitRepo`: A gitRepo volume mounts an empty directory and clones a git repository into it for your pod to use.
+
+- `secret`: A secret volume is used to pass sensitive information, such as passwords, to pods.
+
+- `persistentVolumeClaim`: A persistentVolumeClaim volume is used to mount a PersistentVolume into a pod. PersistentVolumes are a way for users to “claim” durable storage (such as a GCE PersistentDisk or an iSCSI volume) without knowing the details of the particular cloud environment.
+
+- `downwardAPI`: A downwardAPI volume is used to make downward API data available to applications. It mounts a directory and writes the requested data in plain text files.
+
+- `azureDiskVolume`: An AzureDiskVolume is used to mount a Microsoft Azure Data Disk into a Pod.
+
+#### ConfigMap and secrets
 
 Example:
 
