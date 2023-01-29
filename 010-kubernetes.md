@@ -746,7 +746,7 @@ The data within a volume outlasts the containers running in the Pod, which can s
 
 Volumes cannot be added to other volumes and links do not exist between volumes. The Kubernetes user must specify volume mounting for each container in a Pod. A representation of each Pod's desired state is stored in Kubernetes's API server and central controller. Kubernetes also uses its kubelet agents to reconcile deployments. For example, if a volume cannot be used twice, the kubelet will detect this and report that it cannot safely use the volume, and retry and reevaluate deployment options through the scheduler until one is ready that meets the requirements.
 
-#### Types of Kubernetes Volume
+Types of Kubernetes Volume
 
 - `emptyDir`: It is a type of volume that is created when a Pod is first assigned to a Node. It remains active as long as the Pod is running on that node. The volume is initially empty and the containers in the pod can read and write the files in the emptyDir volume. Once the Pod is removed from the node, the data in the emptyDir is erased.
 
@@ -778,12 +778,122 @@ Volumes cannot be added to other volumes and links do not exist between volumes.
 
 - `azureDiskVolume`: An AzureDiskVolume is used to mount a Microsoft Azure Data Disk into a Pod.
 
-#### ConfigMap and secrets
+---
+
+### ConfigMap
+
+In Kubernetes, a ConfigMap is nothing more than a key/value pair. A ConfigMap store’s non-confidential data, meaning no passwords or API keys. ConfigMaps are used for:
+
+- Kubernetes ConfigMap environment variables
+- Kubernetes command-line arguments
+- Configuration files in a volume
+
+The idea with a ConfigMap is you want the ability to pass in information at runtime to your application with the ability to keep an application portable. If you’re using a Kubernetes manifest that contains a Deployment or a Service, you may want to use the Docker image that you’re calling upon across multiple environments. With ConfigMaps, you have the ability to create environment-specific configurations vs having to create a Kubernetes manifest for each environment and putting in the values statically.
 
 Example:
 
 ```bash
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: game-demo
+data:
+  # property-like keys; each key maps to a simple value
+  player_initial_lives: "3"
+  ui_properties_file_name: "user-interface.properties"
 
+  # file-like keys
+  game.properties: |
+    enemy.types=aliens,monsters
+    player.maximum-lives=5
+  user-interface.properties: |
+    color.good=purple
+    color.bad=yellow
+    allow.textmode=true
+```
+
+```bash
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-demo-pod
+spec:
+  containers:
+    - name: demo
+      image: alpine
+      command: ["sleep", "3600"]
+      env:
+        # Define the environment variable
+        - name: PLAYER_INITIAL_LIVES # Notice that the case is different here
+                                     # from the key name in the ConfigMap.
+          valueFrom:
+            configMapKeyRef:
+              name: game-demo           # The ConfigMap this value comes from.
+              key: player_initial_lives # The key to fetch.
+        - name: UI_PROPERTIES_FILE_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: game-demo
+              key: ui_properties_file_name
+      volumeMounts:
+      - name: config
+        mountPath: "/config"
+        readOnly: true
+  volumes:
+  # You set volumes at the Pod level, then mount them into containers inside that Pod
+  - name: config
+    configMap:
+      # Provide the name of the ConfigMap you want to mount.
+      name: game-demo
+      # An array of keys from the ConfigMap to create as files
+      items:
+      - key: "game.properties"
+        path: "game.properties"
+      - key: "user-interface.properties"
+        path: "user-interface.properties"
+
+```
+
+---
+
+### Secrets
+
+A Secret is an object that contains a small amount of sensitive data such as a password, a token, or a key. Such information might otherwise be put in a Pod specification or in a container image. Using a Secret means that you don't need to include confidential data in your application code.
+
+Because Secrets can be created independently of the Pods that use them, there is less risk of the Secret (and its data) being exposed during the workflow of creating, viewing, and editing Pods. Kubernetes, and applications that run in your cluster, can also take additional precautions with Secrets, such as avoiding writing secret data to nonvolatile storage.
+
+Secrets are similar to ConfigMaps but are specifically intended to hold confidential data.
+
+Example:
+
+```bash
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret
+type: Opaque
+data:
+  username: YWRtaW4=
+  password: MWYyZDFlMmU2N2Rm
+```
+
+```bash
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  containers:
+  - name: mypod
+    image: redis
+    volumeMounts:
+    - name: foo
+      mountPath: "/etc/foo"
+      readOnly: true
+  volumes:
+  - name: foo
+    secret:
+      secretName: mysecret
+      optional: false # default setting; "mysecret" must exist
 ```
 
 ---
